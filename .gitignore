@@ -1,0 +1,13 @@
+/target/
+
+# machine-specific paths — each developer has their own
+.cargo/config.toml
+.env
+
+# compiled extension
+*.so
+
+# IDE
+.idea/
+.vscode/
+*.iml

@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build PHP ${{ matrix.php }} extension
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1', '8.2', '8.3', '8.4']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add LLVM 18 apt repo
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" | sudo tee /etc/apt/sources.list.d/llvm-18.list
+          sudo apt-get update
+
+      - name: Install build dependencies
+        run: sudo apt-get install -y cmake libclang-18-dev
+
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: ''
+          tools: none
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build extension
+        env:
+          PHP_CONFIG: /usr/bin/php-config${{ matrix.php }}
+          PHP: /usr/bin/php${{ matrix.php }}
+          LIBCLANG_PATH: /usr/lib/llvm-18/lib
+          BINDGEN_EXTRA_CLANG_ARGS: "-resource-dir /usr/lib/llvm-18/lib/clang/18"
+        run: cargo build --release
+
+      - name: Rename artifact
+        run: |
+          PHP_VER=$(echo "${{ matrix.php }}" | tr -d '.')
+          cp target/release/librnet.so \
+            "librnet-${{ github.ref_name }}-php${PHP_VER}-linux-x86_64-nts.so"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: librnet-php${{ matrix.php }}
+          path: librnet-*.so
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-22.04
+    needs: build
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate SHA256SUMS
+        working-directory: artifacts
+        run: sha256sum librnet-*.so > SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/librnet-*.so
+            artifacts/SHA256SUMS
+          generate_release_notes: true
