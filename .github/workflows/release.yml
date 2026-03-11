@@ -55,6 +55,11 @@ jobs:
           BINDGEN_EXTRA_CLANG_ARGS: "-resource-dir /usr/lib/llvm-18/lib/clang/18"
         run: cargo build --release
 
+      - name: Run integration tests
+        env:
+          PHP: /usr/bin/php${{ matrix.php }}
+        run: $PHP -d extension=target/release/librnet.so tests/run_tests.php
+
       - name: Rename artifact
         run: |
           PHP_VER=$(echo "${{ matrix.php }}" | tr -d '.')
