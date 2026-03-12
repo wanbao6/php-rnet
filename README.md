@@ -575,4 +575,4 @@ export PATH="$HOME/.local/share/mise/installs/cmake/latest/bin:$PATH"
 
 ## License
 
-Apache-2.0
+MIT

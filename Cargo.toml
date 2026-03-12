@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.85.0"
 description = "A high-performance PHP HTTP client with browser TLS/H2 fingerprinting, built in Rust"
-license = "Apache-2.0"
+license = "MIT"
 
 [lib]
 name = "rnet"
