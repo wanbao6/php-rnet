@@ -1,0 +1,51 @@
+name: Build librnet (aarch64, PHP 8.4 NTS)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    # 原生 arm64 runner（公开仓库免费）；私有仓库需 Team/Enterprise 计划
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout php-rnet
+        uses: actions/checkout@v4
+
+      - name: 确认架构
+        run: uname -m && getconf LONG_BIT
+
+      - name: 安装 PHP 8.4 dev（含 php-config / php）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository -y ppa:ondrej/php
+          sudo apt-get update
+          sudo apt-get install -y php8.4-dev php8.4-cli
+
+      - name: 安装编译依赖
+        run: |
+          sudo apt-get install -y \
+            build-essential cmake perl pkg-config clang libclang-dev llvm
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 校验 PHP 与工具链
+        run: |
+          php -v
+          php-config --version
+          php-config --extension-dir
+
+      - name: 编译
+        run: cargo build --release
+
+      - name: 产物自检（必须是 ARM aarch64）
+        run: |
+          file target/release/librnet.so
+          ls -lh target/release/librnet.so
+
+      - name: 上传 librnet.so
+        uses: actions/upload-artifact@v4
+        with:
+          name: librnet-php84-linux-aarch64-nts
+          path: target/release/librnet.so
